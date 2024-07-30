@@ -28,7 +28,10 @@ class Login {
     async OpenWeb() {
         let register_open_btn = document.getElementById("register_open_btn")
         register_open_btn.addEventListener("click", () => {
-            window.open("https://battlylauncher.com/register", "_blank")
+
+            const os = require('os').platform();
+            if (os == "win32") shell.openExternal("https://battlylauncher.com/register")
+            else window.open("https://battlylauncher.com/register", "_blank")
         });
     }
 
@@ -91,7 +94,7 @@ class Login {
                     ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(account_connect => {
                         document.querySelector(".preload-content").style.display = "";
                         document.getElementById("loading-text").innerHTML = lang.logging_in;
-                
+
                         if (!account_connect) {
                             document.getElementById("loading-text").innerHTML = lang.error_logging_in;
                             setTimeout(() => {
@@ -121,8 +124,8 @@ class Login {
 
                         addAccount(account)
                         accountSelect(account.uuid)
-                        
-                        let news_shown = localStorage.getItem("news_shown_v1.8");
+
+                        let news_shown = localStorage.getItem("news_shown_v2.0");
                         if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
                             document.querySelector(".preload-content").style.display = "none";
                             changePanel("news");
@@ -153,12 +156,12 @@ class Login {
                     console.log("❌ Cancelado por el usuario")
                 }
             });
-                
+
         })
-        
+
     }
 
-    
+
 
     async loginOffline() {
         let mailInput = document.getElementById("username_text")
@@ -176,7 +179,10 @@ class Login {
                 type: "info"
             })
 
-            shell.openExternal("https://battlylauncher.com/api/battly/google/login")
+            const os = require('os').platform();
+
+            if (os == "win32") shell.openExternal("https://battlylauncher.com/api/battly/google/login")
+            else window.open("https://battlylauncher.com/api/battly/google/login", "_blank")
 
             document.getElementById("code-login-panel").classList.add("is-active");
 
@@ -242,21 +248,21 @@ class Login {
 
                         infoLogin.innerHTML = lang.checking_if_you_are_premium;
 
-                         let premiums = [];
-                    try {
-                        premiums = await fetch("https://api.battlylauncher.com/api/usuarios/obtenerUsuariosPremium").then(response => response.json()).then(data => data).catch(err => { });
-                    } catch (error) {
-                        premiums = [];
-                    }
+                        let premiums = [];
+                        try {
+                            premiums = await fetch("https://api.battlylauncher.com/api/usuarios/obtenerUsuariosPremium").then(response => response.json()).then(data => data).catch(err => { });
+                        } catch (error) {
+                            premiums = [];
+                        }
 
-                    await this.database.addAccount(account)
-                    await this.database.update({ uuid: "1234", selected: account.uuid }, 'accounts-selected');
+                        await this.database.addAccount(account)
+                        await this.database.update({ uuid: "1234", selected: account.uuid }, 'accounts-selected');
 
-                    let isPremium;
-                    if (!premiums) isPremium = false;
-                    else isPremium = premiums.includes(account.name);
-                    addAccount(account, isPremium);
-                
+                        let isPremium;
+                        if (!premiums) isPremium = false;
+                        else isPremium = premiums.includes(account.name);
+                        addAccount(account, isPremium);
+
                         document.getElementById("code-login-panel").classList.remove("is-active");
                         document.getElementById("code-text").value = "";
 
@@ -264,7 +270,7 @@ class Login {
 
                         infoLoginPanel.classList.remove("is-active");
 
-                        let news_shown = localStorage.getItem("news_shown_v1.8");
+                        let news_shown = localStorage.getItem("news_shown_v2.0");
                         if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
                             document.querySelector(".preload-content").style.display = "none";
                             changePanel("news");
@@ -414,7 +420,7 @@ class Login {
                     return;
                 }
             }
-            
+
 
             fetch("https://battlylauncher.com/api/battly/launcher/login", {
                 method: "POST",
@@ -471,11 +477,11 @@ class Login {
                     if (!premiums) isPremium = false;
                     else isPremium = premiums.includes(account.name);
                     addAccount(account, isPremium);
-                
+
                     infoLoginPanel.classList.remove("is-active");
 
                     await accountSelect(account.uuid)
-                    let news_shown = localStorage.getItem("news_shown_v1.8");
+                    let news_shown = localStorage.getItem("news_shown_v2.0");
                     if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
                         document.querySelector(".preload-content").style.display = "none";
                         changePanel("news");
@@ -484,7 +490,7 @@ class Login {
                         changePanel("home")
                     }
 
-            
+
                     cancelMojangBtn.disabled = false;
                     cancelMojangBtn.click();
                     mailInput.value = "";
