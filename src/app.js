@@ -386,7 +386,21 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.whenReady().then(() => {
-    UpdateWindow.createWindow();
+    if (fs.existsSync(path.join(dataDirectory, ".battly/launchboost"))) {
+      fetch("https://api.battlylauncher.com/launcher/config-launcher/config.json").then(async res => {
+        let data = await res.json();
+        let version = data.latestVersion;
+        let actualVersion = (require("../package.json")).version;
+
+        if (actualVersion != version) {
+          const updateWindow = UpdateWindow.createWindow();
+        } else {
+          MainWindow.createWindow();
+        }
+      });
+    } else {
+      UpdateWindow.createWindow();
+    }
   });
 }
 
@@ -609,10 +623,10 @@ ipcMain.handle("update-app", () => {
 
 const pkgVersion = async () => {
   const pkg = {
-    version: "2.0.1",
-    buildVersion: 1001
+    version: "2.1.0",
+    buildVersion: 1004
   };
-  return JSON.parse(pkg);
+  return pkg;
 };
 
 ipcMain.handle("update-new-app", async () => {
@@ -623,7 +637,7 @@ ipcMain.handle("update-new-app", async () => {
       let data = await res.json();
       let version = data.battly.release;
 
-      let actualBuild = (await pkgVersion()).buildVersion;
+      let actualBuild = (pkgVersion()).buildVersion;
 
       if (actualBuild != version.latest_build) {
         resolve();

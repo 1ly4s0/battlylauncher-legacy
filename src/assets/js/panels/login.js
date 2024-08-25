@@ -8,11 +8,17 @@
 import { database, changePanel, addAccount, accountSelect } from '../utils.js';
 import { Alert } from '../utils/alert.js';
 const { ipcRenderer, shell } = require('electron');
-import { Lang } from "../utils/lang.js";
 const Swal = require("./assets/js/libs/sweetalert/sweetalert2.all.min.js");
 
 
+const { Lang } = require("./assets/js/utils/lang.js");
 let lang;
+new Lang().GetLang().then(lang_ => {
+    lang = lang_;
+}).catch(error => {
+    console.error("Error:", error);
+});
+
 
 class Login {
     static id = "login";
@@ -239,6 +245,7 @@ class Login {
                             uuid: data.user.uuid,
                             name: data.user.username,
                             password: data.user.password,
+                            token: data.user.token,
                             user_properties: '{}',
                             meta: {
                                 type: "cracked",
@@ -454,6 +461,7 @@ class Login {
                         uuid: uuid_,
                         name: mailInput.value,
                         password: passwordInput.value,
+                        token: data.data.token,
                         user_properties: '{}',
                         meta: {
                             type: "cracked",
@@ -477,6 +485,14 @@ class Login {
                     if (!premiums) isPremium = false;
                     else isPremium = premiums.includes(account.name);
                     addAccount(account, isPremium);
+
+                    if (isPremium) {
+                        document.getElementById("header-text-to-add").innerHTML = "Premium Edition";
+                        document.getElementById("header-frame").style.background = `radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8A6E2F 40%, transparent 80%),
+                        radial - gradient(ellipse farthest - corner at left top, #FFFFFF 0 %, #FFFFAC 8 %, #D1B464 25 %, #5d4a1f 62.5 %, #5d4a1f 100 %);`;
+                    } else {
+                        document.getElementById("header-frame").style.background = `#212121`;
+                    }
 
                     infoLoginPanel.classList.remove("is-active");
 
