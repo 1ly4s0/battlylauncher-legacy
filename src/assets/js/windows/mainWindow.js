@@ -12,6 +12,8 @@ let notificationWindow = undefined;
 let selectLangWindow = undefined;
 const { app, net, protocol } = require("electron");
 const { ipcMain } = require("electron");
+let dev = process.env.NODE_ENV === "dev";
+
 
 function getWindow() {
   return mainWindow;
@@ -34,7 +36,7 @@ async function createWindow() {
     resizable: true,
     icon: `./src/assets/images/icon.${os.platform() === "win32" ? "ico" : "png"
       }`,
-    frame: false,
+    frame: os.platform() === "win32" ? false : true,
     show: false,
     webPreferences: {
       contextIsolation: false,
@@ -79,7 +81,7 @@ async function createWindow() {
     webPreferences: {
       contextIsolation: false,
       nodeIntegration: true,
-      devTools: false,
+      devTools: true,
     },
   });
 
@@ -104,12 +106,10 @@ async function createWindow() {
       .executeJavaScript("localStorage.getItem('lang')")
       .then((result) => {
         lang = result;
-        if (
-          lang === null ||
-          lang === undefined ||
-          lang === "" ||
-          lang === "null"
-        ) {
+        console.log(lang)
+        const validLanguages = ["es", "en", "fr", "pt", "ar", "de", "ru", "it", "ja"];
+
+        if (!validLanguages.includes(lang)) {
           selectLangWindow.loadFile(
             path.join(
               electron.app.getAppPath(),
@@ -120,16 +120,21 @@ async function createWindow() {
           );
           selectLangWindow.once("ready-to-show", () => {
             if (selectLangWindow) {
-              //selectLangWindow.openDevTools();
               selectLangWindow.show();
+              if (dev) {
+                selectLangWindow.openDevTools();
+              }
             }
           });
         } else {
           if (mainWindow) {
-            //mainWindow.openDevTools();
+            if (dev) {
+              mainWindow.openDevTools();
+            }
             mainWindow.show();
           }
         }
+
       })
       .catch((error) => {
         console.error("Error al ejecutar JavaScript:", error);
