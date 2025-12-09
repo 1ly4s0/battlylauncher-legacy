@@ -1,173 +1,128 @@
-/**
- * @author TECNO BROS
- 
- */
-
 'use strict';
 
 import { database, changePanel, addAccount, accountSelect } from '../utils.js';
 import { Alert } from '../utils/alert.js';
 const { ipcRenderer, shell } = require('electron');
 const Swal = require("./assets/js/libs/sweetalert/sweetalert2.all.min.js");
+const { getValue, setValue } = require('./assets/js/utils/storage');
 
+require('./assets/js/utils/stringLoader.js');
 
-const { Lang } = require("./assets/js/utils/lang.js");
-let lang;
-new Lang().GetLang().then(lang_ => {
-    lang = lang_;
-}).catch(error => {
-    console.error("Error:", error);
-});
-
+import { AskModal } from '../utils/askModal.js';
+const modal = new AskModal();
 
 class Login {
     static id = "login";
     async init(config) {
         this.config = config
         this.database = await new database().init();
-        lang = await new Lang().GetLang();
         this.getOffline()
         this.getOnline()
-        this.OpenWeb()
-    }
-
-    async OpenWeb() {
-        let register_open_btn = document.getElementById("register_open_btn")
-        register_open_btn.addEventListener("click", () => {
-
-            const os = require('os').platform();
-            if (os == "win32") shell.openExternal("https://battlylauncher.com/register")
-            else window.open("https://battlylauncher.com/register", "_blank")
-        });
     }
 
     getOnline() {
         console.log(`🔃 Iniciando panel de Microsoft...`)
         this.loginMicrosoft();
-        document.querySelector('.cancel-login').addEventListener("click", () => {
-            document.querySelector(".cancel-login").style.display = "none";
-            if (this.database.getAccounts().length == 0) {
-                new Alert().ShowAlert({
-                    title: lang.no_accounts,
-                    message: lang.no_accounts_message,
-                    type: "error"
-                })
-            } else {
-                changePanel("settings");
-            }
-        })
+
     }
 
     getOffline() {
         console.log(`🔃 Iniciando panel de offline...`)
         this.loginOffline();
-        document.querySelector('.cancel-login').addEventListener("click", () => {
-            document.querySelector(".cancel-login").style.display = "none";
-            if (this.database.getAccounts().length == 0) {
-                new Alert().ShowAlert({
-                    title: lang.no_accounts,
-                    message: lang.no_accounts_message,
-                    type: "error"
-                })
-            } else {
-                changePanel("settings");
-            }
-        })
+
     }
 
     loginMicrosoft() {
         let microsoftBtn = document.getElementById("microsoft-button")
-        let mojangBtn = document.querySelector('.mojang')
-        let cancelBtn = document.querySelector('.cancel-login')
 
-        microsoftBtn.addEventListener("click", () => {
-            Swal.fire({
-                title: lang.login_microsoft_adv_title,
-                text: lang.login_microsoft_adv_text,
-                icon: 'info',
-                showCancelButton: true,
-                confirmButtonText: lang.login_microsoft_accept,
-                cancelButtonText: lang.login_microsoft_cancel,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-            }).then((result) => {
-                if (result.isConfirmed) {
+        microsoftBtn.addEventListener("click", async () => {
+            try {
+                await modal.ask({
+                    title: window.stringLoader?.getString("login.login_microsoft_adv_title") || "Iniciar sesión con Microsoft",
+                    text: window.stringLoader?.getString("login.login_microsoft_adv_text") || "Se abrirá una ventana del navegador",
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: window.stringLoader?.getString("login.login_microsoft_accept") || "Continuar",
+                    cancelButtonText: window.stringLoader?.getString("login.login_microsoft_cancel") || "Cancelar",
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    preConfirm: () => true
+                });
+
+                document.querySelector(".preload-content").style.display = "";
+                document.getElementById("loading-text").innerHTML = window.stringLoader?.getString("login.a_microsoft_panel_opened") || "Panel de Microsoft abierto";
+                microsoftBtn.disabled = true;
+
+                try {
+                    console.log("🔃 Iniciando sesión con Microsoft...");
+                    console.log(this.config.client_id);
+                    const account_connect = await ipcRenderer.invoke('Microsoft-window', this.config.client_id);
+                    console.log(account_connect);
+
                     document.querySelector(".preload-content").style.display = "";
-                    document.getElementById("loading-text").innerHTML = lang.a_microsoft_panel_opened;
-                    microsoftBtn.disabled = true;
-                    mojangBtn.disabled = true;
-                    cancelBtn.disabled = true;
-                    ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(account_connect => {
-                        document.querySelector(".preload-content").style.display = "";
-                        document.getElementById("loading-text").innerHTML = lang.logging_in;
+                    document.getElementById("loading-text").innerHTML = window.stringLoader?.getString("login.logging_in") || "Iniciando sesión...";
 
-                        if (!account_connect) {
-                            document.getElementById("loading-text").innerHTML = lang.error_logging_in;
-                            setTimeout(() => {
-                                document.querySelector(".preload-content").style.display = "none";
-                                changePanel("settings");
-                            }, 3000);
-                            console.log("❌ Error al iniciar sesión con Microsoft");
-                            microsoftBtn.disabled = false;
-                            mojangBtn.disabled = false;
-                            cancelBtn.disabled = false;
-                            return;
-                        }
-
-                        let account = {
-                            type: "microsoft",
-                            access_token: account_connect.access_token,
-                            client_token: account_connect.client_token,
-                            uuid: account_connect.uuid,
-                            name: account_connect.name,
-                            refresh_token: account_connect.refresh_token,
-                            user_properties: account_connect.user_properties,
-                            meta: account_connect.meta
-                        }
-
-                        this.database.addAccount(account);
-                        this.database.update({ uuid: "1234", selected: account.uuid }, 'accounts-selected');
-
-                        addAccount(account, false, true);
-                        accountSelect(account.uuid)
-
-                        let news_shown = localStorage.getItem("news_shown_v2.0");
-                        if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
-                            document.querySelector(".preload-content").style.display = "none";
-                            changePanel("news");
-                        } else {
-                            document.querySelector(".preload-content").style.display = "none";
-                            changePanel("home")
-                        }
-
-                        microsoftBtn.disabled = false;
-                        mojangBtn.disabled = false;
-                        cancelBtn.disabled = false;
-                        cancelBtn.style.display = "none";
-                    }).catch(err => {
-                        console.log(err)
-                        microsoftBtn.disabled = false;
-                        mojangBtn.disabled = false;
-                        cancelBtn.disabled = false;
-
-                        document.getElementById("loading-text").innerHTML = lang.error_logging_in;
+                    if (!account_connect) {
+                        document.getElementById("loading-text").innerHTML = window.stringLoader?.getString("login.error_logging_in") || "Error al iniciar sesión";
                         setTimeout(() => {
                             document.querySelector(".preload-content").style.display = "none";
                             changePanel("settings");
                         }, 3000);
+                        console.log("❌ Error al iniciar sesión con Microsoft");
+                        microsoftBtn.disabled = false;
+                        return;
+                    }
 
-                    });
+                    let account = {
+                        type: "microsoft",
+                        access_token: account_connect.access_token,
+                        client_token: account_connect.client_token,
+                        uuid: account_connect.uuid,
+                        name: account_connect.name,
+                        refresh_token: account_connect.refresh_token,
+                        user_properties: account_connect.user_properties,
+                        meta: account_connect.meta
+                    };
 
-                } else {
-                    console.log("❌ Cancelado por el usuario")
+                    this.database.addAccount(account);
+                    this.database.selectAccount(account.uuid);
+
+                    addAccount(account, false, true);
+                    accountSelect(account.uuid, true);
+
+                    let news_shown = await getValue("news_shown_v3.0");
+                    document.querySelector(".preload-content").style.display = "none";
+
+                    if (!news_shown || news_shown == "false") {
+                        changePanel("news");
+                    } else {
+                        changePanel("home");
+                    }
+
+                    document.getElementById("loading-text").innerHTML = window.stringLoader?.getString("login.error_logging_in") || "Error al iniciar sesión"; (() => {
+                        document.querySelector(".preload-content").style.display = "none";
+                        changePanel("settings");
+                    }, 3000);
+                } catch (error) {
+                    console.log("❌ Error al iniciar sesión con Microsoft");
+                    console.error(error);
+                    document.getElementById("loading-text").innerHTML = window.stringLoader?.getString("login.error_logging_in") || "Error al iniciar sesión";
+                    setTimeout(() => {
+                        document.querySelector(".preload-content").style.display = "none";
+                        changePanel("settings");
+                    }, 3000);
                 }
-            });
 
-        })
+                microsoftBtn.disabled = false;
+
+            } catch (err) {
+
+                console.log("❌ Cancelado por el usuario");
+                console.error(err);
+            }
+        });
 
     }
-
-
 
     async loginOffline() {
         let mailInput = document.getElementById("username_text")
@@ -177,11 +132,10 @@ class Login {
         let infoLogin = document.getElementById("info-login")
         let loginBtn = document.getElementById("login-btn")
 
-
         document.getElementById("google-button").addEventListener("click", () => {
             new Alert().ShowAlert({
-                title: lang.login_with_google,
-                message: lang.login_with_google_msg,
+                title: window.stringLoader.getString("login.loginWithGoogle"),
+                message: window.stringLoader.getString("login.loginWithGoogleMsg"),
                 type: "info"
             })
 
@@ -203,15 +157,14 @@ class Login {
 
             if (code == "") {
                 new Alert().ShowAlert({
-                    title: lang.auth_code,
-                    message: lang.auth_code_not_set,
+                    title: window.stringLoader.getString("login.authCode"),
+                    message: window.stringLoader.getString("login.authCodeNotSet"),
                     type: "error"
                 })
             } else {
 
                 infoLoginPanel.classList.add("is-active");
-                infoLogin.innerHTML = lang.checking_auth_code;
-
+                infoLogin.innerHTML = window.stringLoader?.getString("login.checking_auth_code") || "Verificando código de autenticación...";
 
                 fetch("https://battlylauncher.com/api/battly/google/verify", {
                     method: "POST",
@@ -224,7 +177,7 @@ class Login {
                 }).then(response => response.json()).then(async data => {
                     if (data.status == "error") {
                         new Alert().ShowAlert({
-                            title: "Error",
+                            title: window.stringLoader.getString("login.errorTitle"),
                             message: data.message,
                             type: "error"
                         })
@@ -236,7 +189,7 @@ class Login {
                         }, 3000);
                     } else {
 
-                        infoLogin.innerHTML = lang.logging_in;
+                        infoLogin.innerHTML = window.stringLoader?.getString("login.logging_in") || "Iniciando sesión...";
 
                         let account = {
                             type: "battly",
@@ -244,16 +197,15 @@ class Login {
                             client_token: "1234",
                             uuid: data.user.uuid,
                             name: data.user.username,
-                            password: data.user.password,
                             token: data.user.token,
                             user_properties: '{}',
                             meta: {
-                                type: "cracked",
+                                type: "battly",
                                 offline: true
                             }
                         }
 
-                        infoLogin.innerHTML = lang.checking_if_you_are_premium;
+                        infoLogin.innerHTML = window.stringLoader?.getString("login.checking_if_you_are_premium") || "Verificando si eres premium...";
 
                         let premiums = [];
                         try {
@@ -263,7 +215,7 @@ class Login {
                         }
 
                         await this.database.addAccount(account)
-                        await this.database.update({ uuid: "1234", selected: account.uuid }, 'accounts-selected');
+                        await this.database?.selectAccount(account.uuid);
 
                         let isPremium;
                         if (!premiums) isPremium = false;
@@ -273,11 +225,11 @@ class Login {
                         document.getElementById("code-login-panel").classList.remove("is-active");
                         document.getElementById("code-text").value = "";
 
-                        accountSelect(account.uuid)
+                        accountSelect(account.uuid, true);
 
                         infoLoginPanel.classList.remove("is-active");
 
-                        let news_shown = localStorage.getItem("news_shown_v2.0");
+                        let news_shown = await getValue("news_shown_v3.0");
                         if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
                             document.querySelector(".preload-content").style.display = "none";
                             changePanel("news");
@@ -302,12 +254,12 @@ class Login {
                         blockWelcome.innerHTML = `
                         <div class="news-header">
                             <div class="header-text">
-                                <div class="title_">${lang.welcome_again_to_battly}, ${account.name}</div>
+                                <div class="title_">${window.stringLoader?.getString("login.welcome_again_to_battly") || "¡Bienvenido a Battly!"}, ${account.name}</div>
                             </div>
                         </div>
                         <div class="news-content">
                             <div class="bbWrapper">
-                                <p>${lang.we_hope_you_enjoy}</p>
+                                <p>${window.stringLoader?.getString("login.we_hope_you_enjoy") || "Esperamos que disfrutes"}</p>
                             </div>
                         </div>`;
                         welcome.prepend(blockWelcome);
@@ -322,11 +274,108 @@ class Login {
             }
         });
 
+        ipcRenderer.on("battly-login", async (event, data) => {
+            let token = data.split("/login?token=")[1];
+            console.log(token)
+
+            fetch("https://battlylauncher.com/api/battly/launcher/loginWithToken", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            }).then(response => response.json()).then(async data => {
+                if (data.status == "error") {
+                    new Alert().ShowAlert({
+                        title: "Error",
+                        message: data.message,
+                        type: "error"
+                    })
+                } else {
+                    let account = {
+                        type: "battly",
+                        access_token: "1234",
+                        client_token: "1234",
+                        uuid: data.data.uuid,
+                        name: data.data.username,
+                        token: data.data.token,
+                        user_properties: '{}',
+                        meta: {
+                            type: "battly",
+                            offline: true
+                        }
+                    }
+
+                    infoLogin.innerHTML = window.stringLoader?.getString("login.checking_if_you_are_premium") || "Verificando si eres premium...";
+
+                    let premiums = [];
+                    try {
+                        premiums = await fetch("https://api.battlylauncher.com/api/usuarios/obtenerUsuariosPremium").then(response => response.json()).then(data => data).catch(err => { });
+                    } catch (error) {
+                        premiums = [];
+                    }
+
+                    await this.database.addAccount(account)
+                    await this.database?.selectAccount(account.uuid);
+
+                    let isPremium;
+                    if (!premiums) isPremium = false;
+                    else isPremium = premiums.includes(account.name);
+                    addAccount(account, isPremium, false);
+
+                    accountSelect(account.uuid, true)
+
+                    infoLoginPanel.classList.remove("is-active");
+
+                    let news_shown = await getValue("news_shown_v3.0");
+                    if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
+                        document.querySelector(".preload-content").style.display = "none";
+                        changePanel("news");
+                    } else {
+                        document.querySelector(".preload-content").style.display = "none";
+                        changePanel("home")
+                    }
+
+                    cancelMojangBtn.disabled = false;
+                    cancelMojangBtn.click();
+                    mailInput.value = "";
+                    passwordInput.value = "";
+                    loginBtn.disabled = false;
+                    mailInput.disabled = false;
+                    passwordInput.disabled = false;
+                    loginBtn.style.display = "block";
+                    infoLogin.innerHTML = "&nbsp;";
+
+                    let welcome = document.getElementById('battly-news-div');
+                    let blockWelcome = document.createElement('div');
+                    blockWelcome.classList.add('news-block', 'opacity-1');
+                    blockWelcome.innerHTML = `
+                    <div class="news-header">
+                        <div class="header-text">
+                            <div class="title_">${window.stringLoader?.getString("login.welcome_again_to_battly") || "¡Bienvenido a Battly!"}, ${account.name}</div>
+                        </div>
+                    </div>
+                    <div class="news-content">
+                        <div class="bbWrapper">
+                            <p>${window.stringLoader?.getString("login.we_hope_you_enjoy") || "Esperamos que disfrutes"}</p>
+                        </div>
+                    </div>`;
+                    welcome.prepend(blockWelcome);
+                }
+            }).catch(err => {
+                new Alert().ShowAlert({
+                    title: "Error",
+                    message: "Ocurrió un error al iniciar sesión.",
+                    type: "error"
+                })
+            })
+        });
+
         cancelMojangBtn.addEventListener("click", () => {
             if (this.database.getAccounts().length == 0) {
                 new Alert().ShowAlert({
-                    title: lang.no_accounts,
-                    message: lang.no_accounts_message,
+                    title: window.stringLoader?.getString("login.no_accounts") || "Sin cuentas",
+                    message: window.stringLoader?.getString("login.no_accounts_message") || "No hay cuentas disponibles",
                     type: "error"
                 })
             } else {
@@ -334,18 +383,16 @@ class Login {
             }
         })
 
-
         loginBtn.addEventListener("click", async () => {
             cancelMojangBtn.disabled = false;
             loginBtn.disabled = true;
             mailInput.disabled = true;
             passwordInput.disabled = true;
             infoLoginPanel.classList.add("is-active");
-            infoLogin.innerHTML = lang.logging_in;
-
+            infoLogin.innerHTML = window.stringLoader?.getString("login.logging_in") || "Iniciando sesión...";
 
             if (mailInput.value == "") {
-                infoLogin.innerHTML = lang.set_your_username;
+                infoLogin.innerHTML = window.stringLoader?.getString("login.set_your_username") || "Establece tu nombre de usuario";
                 setTimeout(() => {
                     infoLoginPanel.classList.remove("is-active");
                 }, 3000);
@@ -357,7 +404,7 @@ class Login {
             }
 
             if (mailInput.value.length < 3) {
-                infoLogin.innerHTML = lang.threecharacters_username;
+                infoLogin.innerHTML = window.stringLoader?.getString("login.threecharacters_username") || "El nombre debe tener más de 3 caracteres";
                 setTimeout(() => {
                     infoLoginPanel.classList.remove("is-active");
                 }, 3000);
@@ -369,7 +416,7 @@ class Login {
             };
 
             if (passwordInput.value == "") {
-                infoLogin.innerHTML = lang.set_your_password;
+                infoLogin.innerHTML = window.stringLoader?.getString("login.set_your_password") || "Establece tu contraseña";
                 setTimeout(() => {
                     infoLoginPanel.classList.remove("is-active");
                 }, 3000);
@@ -381,7 +428,7 @@ class Login {
             }
 
             if (passwordInput.value.length < 3) {
-                infoLogin.innerHTML = lang.threecharacters_password;
+                infoLogin.innerHTML = window.stringLoader?.getString("login.threecharacters_password") || "La contraseña debe tener más de 3 caracteres";
                 setTimeout(() => {
                     infoLoginPanel.classList.remove("is-active");
                 }, 3000);
@@ -402,7 +449,6 @@ class Login {
                 return md5Bytes.toString('hex');
             }
 
-
             let account;
             let uuid_;
 
@@ -415,7 +461,7 @@ class Login {
             if (accounts.length != 0) {
                 let account = accounts.find(account => account.uuid == uuid_);
                 if (account) {
-                    infoLogin.innerHTML = lang.account_already_exists;
+                    infoLogin.innerHTML = window.stringLoader?.getString("login.account_already_exists") || "Esta cuenta ya existe";
 
                     setTimeout(() => {
                         infoLoginPanel.classList.remove("is-active");
@@ -427,7 +473,6 @@ class Login {
                     return;
                 }
             }
-
 
             fetch("https://battlylauncher.com/api/battly/launcher/login", {
                 method: "POST",
@@ -460,16 +505,15 @@ class Login {
                         client_token: "1234",
                         uuid: uuid_,
                         name: mailInput.value,
-                        password: passwordInput.value,
                         token: data.data.token,
                         user_properties: '{}',
                         meta: {
-                            type: "cracked",
+                            type: "battly",
                             offline: true
                         }
                     }
 
-                    infoLogin.innerHTML = lang.checking_premium;
+                    infoLogin.innerHTML = window.stringLoader?.getString("login.checking_premium") || "Verificando premium...";
 
                     let premiums = [];
                     try {
@@ -479,7 +523,7 @@ class Login {
                     }
 
                     await this.database.addAccount(account)
-                    await this.database.update({ uuid: "1234", selected: account.uuid }, 'accounts-selected');
+                    await this.database?.selectAccount(account.uuid);
 
                     let isPremium;
                     if (!premiums) isPremium = false;
@@ -487,17 +531,17 @@ class Login {
                     addAccount(account, isPremium, false);
 
                     if (isPremium) {
-                        document.getElementById("header-text-to-add").innerHTML = "Premium Edition";
+                        document.getElementById("header-text-to-add").innerHTML = window.stringLoader.getString("login.premiumEdition");
                         document.getElementById("header-frame").style.background = `radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8A6E2F 40%, transparent 80%),
                         radial - gradient(ellipse farthest - corner at left top, #FFFFFF 0 %, #FFFFAC 8 %, #D1B464 25 %, #5d4a1f 62.5 %, #5d4a1f 100 %);`;
                     } else {
-                        document.getElementById("header-frame").style.background = `#212121`;
+                        document.getElementById("header-frame").style.background = `#0f1623`;
                     }
 
                     infoLoginPanel.classList.remove("is-active");
 
-                    await accountSelect(account.uuid)
-                    let news_shown = localStorage.getItem("news_shown_v2.0");
+                    await accountSelect(account.uuid, true);
+                    let news_shown = await getValue("news_shown_v3.0");
                     if (!news_shown || news_shown == "false" || news_shown == null || news_shown == undefined) {
                         document.querySelector(".preload-content").style.display = "none";
                         changePanel("news");
@@ -505,7 +549,6 @@ class Login {
                         document.querySelector(".preload-content").style.display = "none";
                         changePanel("home")
                     }
-
 
                     cancelMojangBtn.disabled = false;
                     cancelMojangBtn.click();
@@ -523,19 +566,19 @@ class Login {
                     blockWelcome.innerHTML = `
                     <div class="news-header">
                         <div class="header-text">
-                            <div class="title_">${lang.welcome_again_to_battly}, ${account.name}</div>
+                            <div class="title_">${window.stringLoader?.getString("login.welcome_again_to_battly") || "¡Bienvenido a Battly!"}, ${account.name}</div>
                         </div>
                     </div>
                     <div class="news-content">
                         <div class="bbWrapper">
-                            <p>${lang.we_hope_you_enjoy}</p>
+                            <p>${window.stringLoader?.getString("login.we_hope_you_enjoy") || "Esperamos que disfrutes"}</p>
                         </div>
                     </div>`;
                     welcome.prepend(blockWelcome);
                 }
             }).catch(err => {
                 console.log(err)
-                infoLogin.innerHTML = lang.error_logging_in;
+                infoLogin.innerHTML = window.stringLoader?.getString("login.error_logging_in") || "Error al iniciar sesión";
                 setTimeout(() => {
                     infoLoginPanel.classList.remove("is-active");
                 }, 3000);

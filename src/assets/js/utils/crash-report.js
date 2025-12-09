@@ -1,19 +1,10 @@
-/**
- * @author TECNO BROS
- 
- */
-
 const { ipcRenderer } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { shell } = require("electron");
-const { Lang } = require("./assets/js/utils/lang.js");
-let lang;
-new Lang().GetLang().then(lang_ => {
-    lang = lang_;
-}).catch(error => {
-    console.error("Error:", error);
-});
+require("./assets/js/utils/stringLoader.js");
+const { getValue, setValue } = require('./assets/js/utils/storage');
+let lang = {};
 
 let showed;
 
@@ -21,78 +12,68 @@ class CrashReport {
     async ShowCrashReport(error) {
         if (showed) return;
         showed = true;
-        lang = await new Lang().GetLang();
+        await window.ensureStringLoader?.();
         let audioError = new Audio("./assets/audios/error.mp3");
         audioError.play();
 
         ipcRenderer.send("new-notification", {
-            title: lang["notification_crash_report_title"],
-            body: lang["notification_crash_report_text"]
+            title: window.stringLoader?.getString("common.notification_crash_report_title") || "Reporte de Error",
+            body: window.stringLoader?.getString("common.notification_crash_report_text") || "Ocurrió un error"
         });
-        // Crear el elemento div principal con la clase "modal is-active"
+
         const modalDiv = document.createElement("div");
         modalDiv.className = "modal is-active";
         modalDiv.style.zIndex = "4";
 
-        // Crear el elemento div con la clase "modal-background" y agregarlo al div principal
         const modalBackgroundDiv = document.createElement("div");
         modalBackgroundDiv.className = "modal-background";
         modalDiv.appendChild(modalBackgroundDiv);
 
-        // Crear el elemento div con la clase "modal-card" y el estilo de fondo y agregarlo al div principal
         const modalCardDiv = document.createElement("div");
         modalCardDiv.className = "modal-card";
-        modalCardDiv.style.backgroundColor = "#212121";
+        modalCardDiv.classList.add("modal-animated");
+        modalCardDiv.style.backgroundColor = "#0f1623";
         modalDiv.appendChild(modalCardDiv);
 
-        // Crear el elemento header con la clase "modal-card-head" y el estilo de fondo y agregarlo al div modal-card
         const headerDiv = document.createElement("header");
         headerDiv.className = "modal-card-head";
-        headerDiv.style.backgroundColor = "#212121";
+        headerDiv.style.backgroundColor = "#0f1623";
         modalCardDiv.appendChild(headerDiv);
 
-        // Crear el elemento p con la clase "modal-card-title", el estilo de color y texto, y agregarlo al div header
         const titleP = document.createElement("p");
         titleP.className = "modal-card-title";
         titleP.style.color = "#fff";
-        titleP.textContent = "Error al abrir Minecraft";
+        titleP.textContent = window.stringLoader?.getString("common.notification_crash_report_title") || "Error al abrir Minecraft";
         headerDiv.appendChild(titleP);
 
-        // Crear el elemento section con la clase "modal-card-body" y el estilo de fondo y color, y agregarlo al div modal-card
         const bodySection = document.createElement("section");
         bodySection.className = "modal-card-body";
-        bodySection.style.backgroundColor = "#212121";
+        bodySection.style.backgroundColor = "#0f1623";
         bodySection.style.color = "#fff";
         modalCardDiv.appendChild(bodySection);
 
-        // Crear el elemento p con el mensaje de error y agregarlo al div section
         const errorP = document.createElement("p");
-        errorP.textContent = lang["thats_a_error_message"];
+        errorP.textContent = window.stringLoader?.getString("crashReport.thatsAnError") || "Vaya, parece que ha ocurrido un error al intentar abrir Minecraft";
         bodySection.appendChild(errorP);
 
-        // Crear el elemento div con la clase "card" y agregarlo al div section
         const cardDiv = document.createElement("div");
         cardDiv.className = "card";
         bodySection.appendChild(cardDiv);
 
-        // Crear el elemento header con la clase "card-header" y agregarlo al div card
         const cardHeaderDiv = document.createElement("header");
         cardHeaderDiv.className = "card-header";
         cardDiv.appendChild(cardHeaderDiv);
 
-        // Crear el elemento p con la clase "card-header-title" y agregarlo al div card-header
         const cardTitleP = document.createElement("p");
         cardTitleP.className = "card-header-title";
-        cardTitleP.textContent = lang["error_found"];
+        cardTitleP.textContent = window.stringLoader?.getString("crashReport.errorFound") || "Error encontrado";
         cardHeaderDiv.appendChild(cardTitleP);
 
-        // Crear el elemento div con la clase "card-content" y el id "content" y agregarlo al div card
         const cardContentDiv = document.createElement("div");
         cardContentDiv.className = "card-content";
         cardContentDiv.id = "content";
         cardDiv.appendChild(cardContentDiv);
 
-        // Crear el elemento textarea con las clases y atributos y agregarlo al div card-content
         const textarea = document.createElement("textarea");
         textarea.className = "textarea errores is-info is-family-code";
         textarea.disabled = true;
@@ -101,16 +82,14 @@ class CrashReport {
         textarea.textContent = error;
         cardContentDiv.appendChild(textarea);
 
-        // Crear el elemento footer con la clase "modal-card-foot" y el estilo de fondo y agregarlo al div modal-card
         const footerDiv = document.createElement("footer");
         footerDiv.className = "modal-card-foot";
-        footerDiv.style.backgroundColor = "#212121";
+        footerDiv.style.backgroundColor = "#0f1623";
         modalCardDiv.appendChild(footerDiv);
 
-        // Crear el elemento button con las clases y atributos y agregarlo al div modal-card-foot
         const closeButton = document.createElement("button");
         closeButton.className = "button is-danger";
-        closeButton.textContent = lang["close"];
+        closeButton.textContent = window.stringLoader?.getString("common.close") || "Cerrar";
         closeButton.addEventListener("click", () => {
             modalDiv.remove();
             showed = false;
@@ -118,29 +97,26 @@ class CrashReport {
 
         const checkSolution = document.createElement("button");
         checkSolution.className = "button is-primary";
-        checkSolution.addEventListener("click", () => {
+        checkSolution.addEventListener("click", async () => {
             let solucionEncontrada = false;
             const modal = document.createElement("div");
             modal.classList.add("modal", "is-active");
             modal.style.zIndex = "4";
 
-            // Crear el fondo del modal
             const modalBackground = document.createElement("div");
             modalBackground.classList.add("modal-background");
 
-            // Crear la tarjeta del modal
             const modalCard = document.createElement("div");
             modalCard.classList.add("modal-card");
-            modalCard.style.backgroundColor = "#212121";
+            modalCard.classList.add("modal-animated");
+            modalCard.style.backgroundColor = "#0f1623";
             modalCard.style.borderRadius = "5px";
 
-            // Crear el cuerpo de la tarjeta del modal
             const modalCardBody = document.createElement("section");
             modalCardBody.classList.add("modal-card-body");
-            modalCardBody.style.backgroundColor = "#212121";
+            modalCardBody.style.backgroundColor = "#0f1623";
             modalCardBody.style.textAlign = "center";
 
-            // Crear la imagen
             const image = document.createElement("img");
             image.src = "./assets/images/icons/loading.gif";
             image.style.width = "70px";
@@ -148,27 +124,22 @@ class CrashReport {
             image.style.margin = "0 auto";
             image.alt = "";
 
-            // Crear el párrafo
             const paragraph = document.createElement("p");
             paragraph.style.color = "#fff";
             paragraph.style.fontSize = "20px";
-            paragraph.innerText = lang["searching_solution"];
+            paragraph.innerText = window.stringLoader?.getString("crashReport.searchingSolution") || "Buscando solución...";
 
-            // Agregar la imagen y el párrafo al cuerpo de la tarjeta del modal
             modalCardBody.appendChild(image);
             modalCardBody.appendChild(paragraph);
 
-            // Agregar el cuerpo de la tarjeta al modal
             modalCard.appendChild(modalCardBody);
 
-            // Agregar el fondo del modal y la tarjeta del modal al modal
             modal.appendChild(modalBackground);
             modal.appendChild(modalCard);
 
-            // Agregar el modal al documento body
             document.body.appendChild(modal);
 
-            const actualLang = localStorage.getItem("lang");
+            const actualLang = await getValue("lang");
 
             let possibleErrors;
 
@@ -176,11 +147,11 @@ class CrashReport {
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
-                        paragraph.innerHTML = `<span style='font-size: 16px;'>${lang["no_solution_found"]}</span>`;
+                        paragraph.innerHTML = `<span style='font-size: 16px;'>${window.stringLoader?.getString("crashReport.noSolutionFound") || "No se encontró solución"}</span>`;
 
                         const closeButton = document.createElement("button");
                         closeButton.className = "button is-danger";
-                        closeButton.textContent = lang["close"];
+                        closeButton.textContent = window.stringLoader?.getString("common.close") || "Cerrar";
 
                         closeButton.addEventListener("click", () => {
                             modal.remove();
@@ -189,11 +160,11 @@ class CrashReport {
                     }
 
                     if (data.status === 404) {
-                        paragraph.innerHTML = `<span style='font-size: 16px;'>${lang["no_solution_found"]}</span>`;
+                        paragraph.innerHTML = `<span style='font-size: 16px;'>${window.stringLoader?.getString("crashReport.noSolutionFound") || "No se encontró solución"}</span>`;
 
                         const closeButton = document.createElement("button");
                         closeButton.className = "button is-danger";
-                        closeButton.textContent = lang["close"];
+                        closeButton.textContent = window.stringLoader?.getString("common.close") || "Cerrar";
 
                         closeButton.addEventListener("click", () => {
                             modal.remove();
@@ -218,12 +189,10 @@ class CrashReport {
                             findedText.style.color = "#fff";
                             findedText.style.fontSize = "20px";
                             findedText.style.fontWeight = "700";
-                            findedText.innerText = lang["solution_found"];
+                            findedText.innerText = window.stringLoader?.getString("crashReport.solutionFound") || "¡Solución encontrada!";
 
                             modalCardBody.appendChild(finded);
                             modalCardBody.appendChild(findedText);
-
-
 
                             setTimeout(() => {
                                 const sparkles = document.createElement("i");
@@ -250,7 +219,7 @@ class CrashReport {
 
                                 const closeButton = document.createElement("button");
                                 closeButton.className = "button is-danger";
-                                closeButton.textContent = lang["close"];
+                                closeButton.textContent = window.stringLoader?.getString("common.close") || "Cerrar";
                                 closeButton.addEventListener("click", () => {
                                     modal.remove();
                                 });
@@ -272,26 +241,25 @@ class CrashReport {
                     }
                 });
 
-
             setTimeout(() => {
                 if (!solucionEncontrada) {
-                    paragraph.innerHTML += `<br><span style='font-size: 16px;'>${lang["searching_solution_taking_1"]}</span>`;
+                    paragraph.innerHTML += `<br><span style='font-size: 16px;'>${window.stringLoader?.getString("crashReport.searchingTaking1") || "Esto está tardando más de lo esperado..."}</span>`;
                 }
             }, 10000);
 
             setTimeout(() => {
                 if (!solucionEncontrada) {
-                    paragraph.innerHTML += `<br><span style='font-size: 16px;'>${lang["searching_solution_taking_2"]}</span>`;
+                    paragraph.innerHTML += `<br><span style='font-size: 16px;'>${window.stringLoader?.getString("crashReport.searchingTaking2") || "Por favor, espera un poco más..."}</span>`;
                 }
             }, 20000);
 
             setTimeout(() => {
                 if (!solucionEncontrada) {
-                    paragraph.innerHTML += `<br><br><span style='font-size: 16px;'>${lang["searching_solution_taking_3"]}</span>`;
+                    paragraph.innerHTML += `<br><br><span style='font-size: 16px;'>${window.stringLoader?.getString("crashReport.searchingTaking3") || "Parece que no hay solución disponible"}</span>`;
 
                     const closeButton = document.createElement("button");
                     closeButton.className = "button is-danger";
-                    closeButton.textContent = lang["close"];
+                    closeButton.textContent = window.stringLoader?.getString("common.close") || "Cerrar";
 
                     closeButton.addEventListener("click", () => {
                         modal.remove();
@@ -302,12 +270,11 @@ class CrashReport {
             }, 30000);
 
         });
-        checkSolution.innerHTML = '<span><i class="fa-solid fa-wand-magic-sparkles"></i> ' + lang["find_solution"] + '</span>';
+        checkSolution.innerHTML = '<span><i class="fa-solid fa-wand-magic-sparkles"></i> ' + (window.stringLoader?.getString("crashReport.findSolution") || "Buscar solución") + '</span>';
 
-        //boton de guardar logs, mostrará un dialogo para guardar los logs en un archivo de texto, abrirá el explorador de archivos y se podrá guardar donde quiera
         const saveLogsButton = document.createElement("button");
         saveLogsButton.className = "button is-info";
-        saveLogsButton.textContent = lang["save_logs"];
+        saveLogsButton.textContent = window.stringLoader?.getString("crashReport.saveLogs") || "Guardar logs";
         saveLogsButton.addEventListener("click", () => {
             let logs = document.querySelector(".errores").value;
             let logsPath = path.join(__dirname, "logs.txt");
@@ -326,10 +293,9 @@ class CrashReport {
         footerDiv.appendChild(saveLogsButton);
         footerDiv.appendChild(discordBtn);
         footerDiv.appendChild(closeButton);
-        // Agregar saltos de línea al final del código
+
         modalDiv.appendChild(document.createElement("br"));
 
-        // Agregar el div principal al cuerpo del documento
         document.body.appendChild(modalDiv);
     }
 }
