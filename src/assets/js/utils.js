@@ -311,4 +311,3 @@ async function headplayer(id, pseudo, isOffline) {
         element.style.backgroundImage = `url(https://minotar.net/skin/${pseudo}.png)`
     }
 }
-
