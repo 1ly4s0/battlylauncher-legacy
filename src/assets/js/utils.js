@@ -4,7 +4,6 @@ import logger from './utils/logger.js';
 import slider from './utils/slider.js';
 const axios = require('axios');
 const { ipcRenderer } = require('electron');
-const { trackEvent } = require("@aptabase/electron/renderer");
 import { Alert } from "./utils/alert.js";
 const { getValue, setValue } = require('./assets/js/utils/storage');
 const AnalyticsHelper = require('./assets/js/utils/analyticsHelper.js');
