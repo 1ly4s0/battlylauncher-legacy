@@ -25,6 +25,7 @@
     "ext": "js,html,css"
   },
   "dependencies": {
+    "@aptabase/electron": "^0.3.1",
     "@distube/ytpl": "^1.2.1",
     "7zip-bin": "^5.2.0",
     "acorn": "^8.14.1",
