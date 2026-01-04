@@ -24,7 +24,7 @@
   "nodemonConfig": {
     "ext": "js,html,css"
   },
-  "dependencies": 
+  "dependencies": {
     "@distube/ytpl": "^1.2.1",
     "7zip-bin": "^5.2.0",
     "acorn": "^8.14.1",
@@ -76,5 +76,4 @@
     "url": "https://github.com/1ly4s0/battlylauncher.git"
   },
   "private": true
-
 }
